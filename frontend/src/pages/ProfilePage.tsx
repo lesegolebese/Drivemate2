@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Mail, Phone, BookOpen, Save, AlertCircle, Loader, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usersAPI } from '../lib/api';
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();

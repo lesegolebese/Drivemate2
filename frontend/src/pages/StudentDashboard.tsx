@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, TrendingUp, Calendar, FileText, AlertCircle, Loader } from 'lucide-react';
+import { BookOpen, TrendingUp, Calendar, FileText, AlertCircle, Loader, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { progressAPI, bookingsAPI } from '../lib/api';
-import type { StudentProgress, Booking } from '../types';
+import { progressAPI, bookingsAPI, schedulingAPI } from '../lib/api';
+import type { StudentProgress, Booking, SmartSchedulingSuggestion } from '../types';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
   const [progress, setProgress] = useState<StudentProgress | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [smartSuggestions, setSmartSuggestions] = useState<SmartSchedulingSuggestion[]>([]);
+  const [reminderCount, setReminderCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -15,12 +17,15 @@ const StudentDashboard: React.FC = () => {
     const fetchData = async () => {
       try {
         if (!user?.id) return;
-        const [progressRes, bookingsRes] = await Promise.all([
+        const [progressRes, bookingsRes, suggestionsRes] = await Promise.all([
           progressAPI.get(user.id),
           bookingsAPI.getMyLessons(),
+          schedulingAPI.getSuggestions(),
         ]);
         setProgress(progressRes.data);
         setBookings(bookingsRes.data);
+        setSmartSuggestions(suggestionsRes.data.suggestions || []);
+        setReminderCount(suggestionsRes.data.reminderCount || 0);
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to load data');
       } finally {
@@ -139,33 +144,62 @@ const StudentDashboard: React.FC = () => {
             )}
           </div>
 
-          {/* Progress Note */}
+          {/* Smart Scheduling */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Instructor Notes</h2>
-            <div className="bg-slate-700/30 rounded-lg p-4 border-l-4 border-emerald-500">
-              <p className="text-slate-300">
-                {progress?.lessonNotes || 'No notes yet. Your instructor will add feedback after each lesson.'}
-              </p>
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Sparkles size={22} className="text-amber-400" />
+              Smart Scheduling
+            </h2>
+            <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+              {reminderCount > 0 ? `${reminderCount} reminder(s) ready for your upcoming lessons.` : 'No reminder alerts yet - book a lesson to get proactive updates.'}
             </div>
+            {smartSuggestions.length === 0 ? (
+              <p className="text-slate-400 text-sm">No open lesson slots are available right now.</p>
+            ) : (
+              <div className="space-y-3">
+                {smartSuggestions.map((slot) => (
+                  <div key={slot.id} className="rounded-lg border border-slate-600 bg-slate-700/30 p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-white font-medium">{slot.date}</span>
+                      <span className="text-xs text-emerald-300">{slot.score}% fit</span>
+                    </div>
+                    <p className="text-emerald-400 text-sm">{slot.timeWindow}</p>
+                    <p className="text-slate-300 text-sm mt-1">{slot.vehicle}</p>
+                    <p className="text-slate-400 text-xs mt-1">Instructor: {slot.instructor}</p>
+                    <p className="text-amber-200 text-xs mt-2">{slot.reason}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
-            {/* Quick Stats */}
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Completed:</span>
-                <span className="text-white font-semibold">{progress?.completedLessons || 0} lessons</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Remaining:</span>
-                <span className="text-white font-semibold">
-                  {Math.max(0, (progress?.totalLessons || 20) - (progress?.completedLessons || 0))} lessons
-                </span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-2 mt-4">
-                <div
-                  className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-2 rounded-full transition-all"
-                  style={{ width: `${progress?.progressPct || 0}%` }}
-                />
-              </div>
+        {/* Progress Note */}
+        <div className="mt-8 bg-slate-800/50 border border-slate-700 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-white mb-4">Instructor Notes</h2>
+          <div className="bg-slate-700/30 rounded-lg p-4 border-l-4 border-emerald-500">
+            <p className="text-slate-300">
+              {progress?.lessonNotes || 'No notes yet. Your instructor will add feedback after each lesson.'}
+            </p>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="mt-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Completed:</span>
+              <span className="text-white font-semibold">{progress?.completedLessons || 0} lessons</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Remaining:</span>
+              <span className="text-white font-semibold">
+                {Math.max(0, (progress?.totalLessons || 20) - (progress?.completedLessons || 0))} lessons
+              </span>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2 mt-4">
+              <div
+                className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-2 rounded-full transition-all"
+                style={{ width: `${progress?.progressPct || 0}%` }}
+              />
             </div>
           </div>
         </div>

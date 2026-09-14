@@ -97,6 +97,22 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface SmartSchedulingSuggestion {
+  id: string;
+  date: string;
+  timeWindow: string;
+  vehicle: string;
+  instructor: string;
+  reason: string;
+  score: number;
+}
+
+export interface SmartSchedulingOverview {
+  suggestions: SmartSchedulingSuggestion[];
+  reminderCount: number;
+  generatedAt: string;
+}
+
 export interface QuizAttempt {
   id: string;
   userId: string;

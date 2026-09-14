@@ -219,17 +219,31 @@ const Navbar: React.FC = () => {
             </div>
 
             <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 rounded-lg transition hover:bg-slate-700 text-slate-300"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
+            <button
+              type="button"
               onClick={logout}
               className="p-2 hover:bg-red-500/10 text-red-400 rounded-lg transition"
               title="Logout"
+              aria-label="Logout"
             >
               <LogOut size={18} />
             </button>
-
+ 
             {/* Mobile Menu Button */}
             <button
+              type="button"
               className="md:hidden p-2 hover:bg-slate-700 text-slate-300 rounded-lg"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
             >
               <Menu size={18} />
             </button>

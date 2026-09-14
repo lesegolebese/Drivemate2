@@ -11,6 +11,7 @@ import type {
   QuizQuestion,
   StudentProgress,
   MessageThread,
+  SmartSchedulingOverview,
 } from '../types';
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
@@ -44,6 +45,8 @@ export const usersAPI = {
   updateRole: (userId: string, role: string) =>
     api.patch<User>(`/admin/users/${userId}`, { role }),
   delete: (userId: string) => api.delete(`/admin/users/${userId}`),
+  updateProfile: (data: { name?: string; phone?: string; bio?: string }) =>
+    api.patch<User>('/auth/me', data),
 };
 
 // Availability Slots (Instructor)
@@ -93,6 +96,12 @@ export const notificationsAPI = {
   getAll: () => api.get<Notification[]>('/notifications'),
   markAsRead: (notificationId: string) =>
     api.patch<Notification>(`/notifications/${notificationId}`, { isRead: true }),
+};
+
+// Smart scheduling and reminders
+export const schedulingAPI = {
+  getSuggestions: () => api.get<SmartSchedulingOverview>('/scheduling/suggestions'),
+  getReminders: () => api.get<{ reminders: any[]; count: number }>('/scheduling/reminders'),
 };
 
 // Messages

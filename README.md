@@ -1,228 +1,338 @@
 # DriveMate Driving School Management System
 
-A comprehensive full-stack web application for managing driving school operations, including student bookings, instructor schedules, progress tracking, payments, and communications. **100% Local Hosting - No Cloud Dependencies - Completely Free.**
+DriveMate is a local full-stack driving school management system built to help a driving school manage students, instructors, bookings, payments, progress, messaging, reminders, and admin reporting without needing a cloud platform or external database.
 
-## 🚗 Features
+It runs completely on a single machine using a local SQLite database and Node.js backend, with a React + TypeScript frontend for the user experience.
 
-### High Priority (Essential Features)
-1. **User Management & Roles** - Authentication system with distinct permissions and dashboards for STUDENT, INSTRUCTOR, and ADMIN roles
-2. **Booking & Scheduling** - Interactive slot viewer for students to book, view available times, reschedule, or cancel lessons
-3. **Instructor Availability** - Management panel for instructors to set, toggle, and update available time slots
-4. **Prevention of Double Booking** - Server-side validation logic in Express preventing booking transactions on already claimed slots
+## 1. Project purpose
 
-### Medium Priority (Important Features)
-5. **Payment Management** - Payment tracking module for students (packages/lessons) and a financial overview table for Admins
-6. **Lesson Progress & History** - Instructor progress tracker (rating, miles, lesson notes) and student lesson history view
-7. **Notifications & Reminders** - Interactive notification drawer displaying booking confirmations and automated upcoming lesson reminders
+The goal of the project is to manage a driving school in one system where:
 
-### Low Priority (Additional Features)
-8. **In-App Communication** - Simple direct messaging UI thread between students and assigned instructors
-9. **Reporting & Analytics** - Admin dashboard visual cards (total bookings, revenue metrics, instructor performance)
-10. **Advanced Feedback System** - Detailed feedback modal for instructors to post structured evaluation scores to student profiles
+- Students can view lessons, book driving sessions, pay for packages, track progress, and receive smart reminders.
+- Instructors can create availability, manage lesson schedules, and review student progress and notes.
+- Admins can oversee the platform, monitor users, handle payments, and view system analytics.
 
-## 🛠️ Tech Stack
+This is designed for a local mentor/demo environment, so all data is seeded with realistic sample users and can be run without internet or external services.
 
-### Backend
-- **Node.js** with Express.js
-- **Prisma ORM** with SQLite (local file database - completely free)
-- **JWT** for authentication
-- **bcryptjs** for password hashing
-- **CORS** for cross-origin requests
+## 2. How the system works
+
+### Student flow
+
+A student starts by logging in, then sees a student dashboard showing:
+
+- progress percentage
+- license track
+- lessons completed vs total
+- upcoming lessons
+- smart scheduling recommendations
+- reminder count
+
+From there, the student can:
+
+1. Open the booking page.
+2. View available instructor slots.
+3. Select a lesson time that matches their schedule.
+4. Book the lesson if they have lesson credits from a paid package.
+5. Receive a booking confirmation notification.
+6. Receive automatic lesson reminders for upcoming lessons.
+7. View lesson history and progress notes.
+8. Use the quiz feature to practice K53-related questions.
+
+The real logic sits in the backend. The server validates whether the user is a student, checks whether the slot is free, prevents double-booking, and confirms whether the student has available lesson credits before creating the booking.
+
+Example flow:
+
+- Frontend sends a POST request to /api/bookings/:slotId
+- Backend checks slot status, user role, and existing bookings
+- Backend verifies payment package credits
+- If valid, the slot is set as booked and a booking record is created
+- A notification is created for the student
+- The reminder generator checks the upcoming lesson and prepares reminder updates
+
+### Instructor flow
+
+An instructor logs in and sees their own dashboard with:
+
+- their teaching schedule
+- upcoming student bookings
+- performance summary
+- student progress information
+- communication tools
+
+From there, the instructor can:
+
+1. Create lesson availability slots.
+2. View their own schedule through /api/slots/my-schedule.
+3. Check which students booked their lessons.
+4. Update lesson progress and notes for students.
+5. Send or view messages to students.
+
+On the backend, instructor actions are protected by role-based authorization. Only users with the INSTRUCTOR or ADMIN role can access slot management and student progress updates.
+
+Example flow:
+
+- Frontend calls /api/slots
+- Express verifies the JWT token and role
+- Prisma checks for duplicate slot conflicts
+- If no conflict exists, the slot is created
+- The instructor can later view all their slots and booked student details
+
+### Admin flow
+
+An admin logs in and has access to the broadest controls in the application. The admin dashboard is used for:
+
+- viewing platform analytics
+- managing users and roles
+- monitoring payments
+- reviewing vehicles and documents
+- checking general system data
+
+Admin can:
+
+1. Update user roles
+2. Delete accounts when needed
+3. View all users with pagination
+4. Review financial summaries
+5. Manage system-wide records
+
+The backend only allows the ADMIN role to hit user management and analytics endpoints. This is enforced using middleware that checks req.user.role before the request proceeds.
+
+Example flow:
+
+- Frontend requests /api/admin/users
+- JWT is checked
+- Role middleware confirms ADMIN
+- Prisma queries user records and returns paginated results
+
+## 3. Code behind the logic
+
+### Frontend structure
+
+The frontend is built in React + TypeScript inside the `frontend/src` folder.
+
+Main frontend files include:
+
+- `frontend/src/App.tsx` – routing, navigation, protected routes, and role-based layout
+- `frontend/src/context/AuthContext.tsx` – login state and session handling
+- `frontend/src/lib/api.ts` – centralized Axios API calls
+- `frontend/src/pages/StudentDashboard.tsx` – student dashboard
+- `frontend/src/pages/InstructorDashboard.tsx` – instructor dashboard
+- `frontend/src/pages/AdminDashboard.tsx` – admin dashboard
+- `frontend/src/pages/BookingPage.tsx` – lesson booking flow
+- `frontend/src/pages/PaymentsPage.tsx` – package purchasing and payments
+- `frontend/src/pages/NotificationsPage.tsx` – reminder and system notifications
+
+The frontend uses React Router to redirect users based on auth state and role. Protected routes are wrapped in a `ProtectedRoute` component that prevents unauthorised users from entering pages they should not access.
+
+### Backend structure
+
+The backend is a Node.js Express application in `backend/server.js`.
+
+Core backend logic includes:
+
+- JWT authentication
+- role-based authorization middleware
+- Prisma database queries
+- holiday/scheduling recommendation logic
+- reminder generation logic
+- booking validation rules
+
+Key patterns used in the server:
+
+- `authenticateToken` verifies the JWT before allowing a request
+- `authorize(['ROLE'])` ensures only the correct role can access the route
+- Prisma transactions are used to book a slot safely
+- duplicate scheduling checks prevent invalid slot creation
+- payment credits are checked before a booking is accepted
+
+### Smart scheduling and reminder logic
+
+This part is important because it shows how the app becomes more than a booking system.
+
+The backend has two main helper functions:
+
+- `getBestSchedulingSuggestions(studentId)`
+- `generateLessonReminderNotifications(studentId)`
+
+The scheduling engine:
+
+- reads the student's progress
+- finds open slots in the near future
+- scores each slot based on proximity and learning priority
+- recommends the best lesson times for the student
+
+The reminder engine:
+
+- finds confirmed bookings within the next 7 days
+- checks if a reminder already exists
+- creates a notification if one is needed
+- sends the reminder to the student and stores it in the database
+
+This logic is exposed through:
+
+- `GET /api/scheduling/suggestions`
+- `GET /api/scheduling/reminders`
+
+## 4. Technologies used
 
 ### Frontend
-- **React 18** with TypeScript
-- **React Router** for navigation
-- **Tailwind CSS** for styling
-- **Lucide React** for icons
-- **Axios** for API calls
-- **Recharts** for analytics visualization
 
-**Database: SQLite** - A powerful, zero-configuration, serverless SQL database engine. Perfect for local hosting with no external dependencies.
+- React 18
+- TypeScript
+- React Router DOM
+- Tailwind CSS
+- Axios
+- Lucide React icons
+- Recharts for analytics visualizations
 
-## 📋 Prerequisites
+Why these were chosen:
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Git
+- React gives a fast component-based UI
+- TypeScript reduces runtime errors and makes the code cleaner
+- Tailwind makes the UI fast to build and consistent
+- Axios simplifies API requests from the frontend
+- Recharts helps with admin analytics cards
 
-## 🚀 Installation
+### Backend
 
-### 1. Install Dependencies
+- Node.js
+- Express.js
+- Prisma ORM
+- SQLite
+- JWT
+- bcryptjs
+- CORS
+
+Why these were chosen:
+
+- Node.js is fast for API development
+- Express is simple and effective for REST endpoints
+- Prisma makes database access safer and easier to maintain
+- SQLite is ideal for local hosting and demo environments
+- JWT lets the app authenticate users statelessly
+- bcryptjs securely hashes passwords so they are not stored in plain text
+
+### Database model
+
+The database is defined in `backend/prisma/schema.prisma` and includes tables such as:
+
+- `User`
+- `StudentProgress`
+- `AvailabilitySlot`
+- `Booking`
+- `Payment`
+- `Notification`
+- `Message`
+- `Feedback`
+- `QuizAttempt`
+- `Vehicle`
+- `Document`
+- `Attendance`
+
+This structure allows the app to keep all core business data together in one local SQLite database.
+
+## 5. Real application flow from login to lesson booking
+
+The core movement of the app is:
+
+1. User logs in
+2. JWT token is created and returned
+3. Frontend stores token and loads user data
+4. Route protection checks role and redirects unauthorized users
+5. User lands on their role-specific dashboard
+6. Student books from available slots
+7. Backend validates slot data and credits
+8. Booking is stored in the database
+9. Confirmation notification is created
+10. Reminder system checks future bookings and creates reminder notifications
+11. Admin views analytics and payment records
+12. Instructor updates progress and schedule notes
+
+This flow keeps the system logical and ensures that the frontend does not have to be trusted for security decisions. Important checks happen on the backend.
+
+## 6. Why this project is efficient and reliable
+
+This project was designed to be:
+
+- local-first
+- easy to run on one device
+- role-based
+- realistic for a school operations demo
+- consistent in logic and UI flow
+
+It is efficient because:
+
+- the same local SQLite database powers everything
+- the backend acts as the central source of truth
+- role security is enforced in the server, not only in the UI
+- the reminder and scheduling logic helps students take action proactively
+
+## 7. Demo credentials
+
+### Admin
+- Email: lesego@drivemate.co.za
+- Password: Admin@123
+
+### Instructor
+- Email: sipho.khumalo@drivemate.co.za
+- Password: Instructor@123
+
+### Student
+- Email: thando.zungu@example.co.za
+- Password: Student@123
+
+## 8. How to run locally
+
+Install dependencies:
+
 ```bash
 npm run setup
 ```
-This installs dependencies for root, backend, and frontend in one command.
 
-### 2. Initialize Database
+Push Prisma schema to SQLite and seed demo data:
+
 ```bash
-npm run db:push
+npm run db:setup
 ```
-This creates the SQLite database with all required tables.
 
-### 3. Seed Sample Data
-```bash
-npm run db:seed
-```
-This populates the database with demo accounts and sample data for testing.
+Start the app:
 
-### 4. Start the Application
 ```bash
 npm run dev
 ```
-This starts both backend (port 5000) and frontend (port 3000) concurrently.
 
-## 📱 Demo Credentials
+Then open:
 
-The database seed includes the following demo accounts:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
 
-### Admin
-- **Email**: lesego@drivemate.co.za
-- **Password**: Admin@123
-- **Role**: Technical Lead with full system access
+## 9. Project structure
 
-### Instructors
-- **Email**: sipho.khumalo@drivemate.co.za
-- **Password**: Instructor@123
-- **Role**: Senior Instructor
-
-- **Email**: thabo.mokoena@drivemate.co.za
-- **Password**: Instructor@123
-- **Role**: Road Safety Specialist
-
-- **Email**: naledi.ngobeni@drivemate.co.za
-- **Password**: Instructor@123
-- **Role**: Code 10 Specialist
-
-### Students
-- **Email**: thando.zungu@example.co.za
-- **Password**: Student@123
-- **Role**: Student
-
-- **Email**: lerato.ndlovu@example.co.za
-- **Password**: Student@123
-- **Role**: Student
-
-## 🎨 Design Theme
-
-The application uses a professional dark theme with:
-- **Background**: Deep navy (`#0f172a`)
-- **Accent**: DriveMate dark emerald green (`#1D6A4A`)
-- **Card borders**: Slate (`#1E293B`)
-- **Highlight pills**: Neon emerald (`#10b981`)
-
-## 💾 Database
-
-**SQLite is used for all data storage:**
-- **File Location**: `backend/dev.db`
-- **Zero Configuration**: Database is created automatically on first run
-- **Completely Free**: No licensing costs
-- **Fully Portable**: Entire database is one file - can be copied anywhere
-- **Perfect for Local Hosting**: No external database server needed
-- **No Dependencies**: No need to install PostgreSQL, MySQL, or other databases
-
-The database includes all tables for users, bookings, payments, messages, feedback, quiz attempts, and notifications.
-
-## 📁 Project Structure
-
-```
+```bash
 Drivemate2/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma    # Database schema
-│   │   └── seed.js          # Database seed script
-│   ├── server.js            # Express API server (Node.js)
-│   ├── dev.db               # SQLite database (auto-created)
+│   │   ├── schema.prisma
+│   │   └── seed.js
+│   ├── server.js
 │   ├── package.json
-│   └── .env                 # Environment variables (auto-created)
+│   └── dev.db
 ├── frontend/
-│   ├── src/                 # React source code
-│   ├── package.json
-│   └── tailwind.config.js
-├── package.json             # Root package.json
-└── README.md
+│   ├── src/
+│   └── package.json
+├── package.json
+├── README.md
+└── node_modules/
 ```
 
-## 🔧 API Endpoints
+## 10. Conclusion
 
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/me` - Get current user
+DriveMate is a complete local driving school management system built to mimic real operations in a simple, understandable, and practical way. It combines backend logic, database design, role-based access, and frontend UI into one working application.
 
-### User Management (Admin)
-- `GET /api/admin/users` - List all users
-- `PATCH /api/admin/users/:userId` - Update user role
-- `DELETE /api/admin/users/:userId` - Delete user
+The student flow is focused on booking and learning progress, the instructor flow is centered on schedule and student coaching, and the admin flow is focused on system control and oversight.
 
-### Availability Slots
-- `POST /api/slots` - Create availability slot (Instructor)
-- `GET /api/slots/available` - Get available slots
-- `GET /api/slots/my-schedule` - Get instructor's schedule
-- `DELETE /api/slots/:slotId` - Delete slot
+This project is a strong full-stack example of how a real business workflow can be implemented in a simple local environment without depending on cloud services.
 
-### Bookings
-- `POST /api/bookings/:slotId` - Book a lesson
-- `GET /api/bookings/my-lessons` - Get student's bookings
-- `POST /api/bookings/:bookingId/cancel` - Cancel booking
+## 11. Credits
 
-### Progress
-- `GET /api/progress/:studentId` - Get student progress
-- `PATCH /api/progress/:studentId` - Update progress (Instructor)
-- `GET /api/lessons/history` - Get lesson history
-
-### Payments
-- `GET /api/payments/packages` - Get payment packages
-- `POST /api/payments` - Create payment
-- `GET /api/payments/my` - Get student's payments
-- `PATCH /api/payments/:paymentId` - Update payment status
-- `GET /api/admin/payments` - Get admin payment overview
-
-### Notifications
-- `GET /api/notifications` - Get user notifications
-- `PATCH /api/notifications/:notificationId` - Mark as read
-
-### Messages
-- `POST /api/messages` - Send message
-- `GET /api/messages/:peerId` - Get messages with user
-- `GET /api/messages-threads` - Get message threads
-
-### Feedback
-- `POST /api/feedback` - Submit feedback (Instructor)
-- `GET /api/feedback/:studentId` - Get student feedback
-
-### Quiz
-- `GET /api/quiz/questions` - Get K53 quiz questions
-- `POST /api/quiz/attempt` - Submit quiz attempt
-- `GET /api/quiz/attempts` - Get user's quiz attempts
-
-### Analytics (Admin)
-- `GET /api/admin/analytics` - Get dashboard analytics
-
-## 🧪 Testing
-
-The application includes demo credentials and seeded data for testing all features. Use the role switcher (available when logged in as Admin) to quickly switch between Student, Instructor, and Admin views.
-
-## 📝 Database Schema
-
-The application uses the following main models:
-- **User** - Accounts with roles (STUDENT, INSTRUCTOR, ADMIN)
-- **StudentProgress** - Tracks student learning progress
-- **AvailabilitySlot** - Instructor availability time slots
-- **Booking** - Lesson bookings with status tracking
-- **Payment** - Payment records and package tracking
-- **Message** - In-app communication
-- **Feedback** - Instructor evaluations
-- **QuizAttempt** - K53 learner's licence quiz results
-- **Notification** - System notifications
-
-## 🤝 Contributing
-
-This is a CPUT Project III submission for the Faculty of Informatics & Design.
-
-## 👥 Team
-
-**Technical Lead**: Lesego Lebese
-
-## 📄 License
-
-© 2026 DriveMate Driving School Management System. Faculty of Informatics & Design — CPUT Project III
+Project developed for local driving school management and demo purposes.

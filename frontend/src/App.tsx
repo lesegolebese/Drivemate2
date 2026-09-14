@@ -152,7 +152,6 @@ const Navbar: React.FC = () => {
           { path: '/dashboard', label: 'Dashboard', icon: Home },
           { path: '/my-students', label: 'My Students', icon: Users },
           { path: '/messages', label: 'Messages', icon: MessageCircle },
-          { path: '/analytics', label: 'Performance', icon: TrendingUp },
         ]
       : [
           { path: '/dashboard', label: 'Dashboard', icon: Home },
@@ -384,7 +383,7 @@ const App: React.FC = () => {
           <Route
             path="/analytics"
             element={
-              <ProtectedRoute allowedRoles={['INSTRUCTOR', 'ADMIN']}>
+              <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminDashboard />
               </ProtectedRoute>
             }
